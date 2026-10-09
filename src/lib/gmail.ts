@@ -35,7 +35,7 @@ function senderName(from: string): string {
   return (m ? m[1] : from).trim() || from;
 }
 
-export async function fetchNewMail(user: StoredUser): Promise<NewMail[]> {
+export async function gmailClient(user: StoredUser) {
   const auth = oauthClient();
   auth.setCredentials({
     refresh_token: user.refreshToken,
@@ -49,7 +49,52 @@ export async function fetchNewMail(user: StoredUser): Promise<NewMail[]> {
       await saveUser(user);
     }
   });
-  const gmail = google.gmail({ version: "v1", auth });
+  return google.gmail({ version: "v1", auth });
+}
+
+export type FullMail = {
+  id: string;
+  from: string;
+  to: string;
+  subject: string;
+  date: string;
+  body: string;
+};
+
+function findBody(part: import("googleapis").gmail_v1.Schema$MessagePart | undefined): string {
+  if (!part) return "";
+  if (part.mimeType === "text/plain" && part.body?.data) {
+    return Buffer.from(part.body.data, "base64url").toString("utf8");
+  }
+  if (part.parts) {
+    for (const p of part.parts) {
+      const b = findBody(p);
+      if (b) return b;
+    }
+  }
+  if (part.mimeType === "text/html" && part.body?.data) {
+    const html = Buffer.from(part.body.data, "base64url").toString("utf8");
+    return html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  }
+  return "";
+}
+
+export async function fetchMailBody(user: StoredUser, id: string): Promise<FullMail> {
+  const gmail = await gmailClient(user);
+  const full = await gmail.users.messages.get({ userId: "me", id, format: "full" });
+  const headers = full.data.payload?.headers as never[];
+  return {
+    id,
+    from: decodeHeader(headers, "From"),
+    to: decodeHeader(headers, "To"),
+    subject: decodeHeader(headers, "Subject") || "(sin asunto)",
+    date: decodeHeader(headers, "Date"),
+    body: findBody(full.data.payload) || full.data.snippet || "",
+  };
+}
+
+export async function fetchNewMail(user: StoredUser): Promise<NewMail[]> {
+  const gmail = await gmailClient(user);
   const res = await gmail.users.messages.list({
     userId: "me",
     q: "is:unread in:inbox -category:{promotions social updates forums}",

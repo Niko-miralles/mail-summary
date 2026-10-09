@@ -9,7 +9,17 @@ export type StoredUser = {
   accessTokenExpiry?: number;
   lastCheckedMessageId?: string;
   subscriptions: PushSubscriptionJSON[];
+  recentMails?: StoredMail[];
   createdAt: number;
+};
+
+export type StoredMail = {
+  id: string;
+  senderName: string;
+  from: string;
+  subject: string;
+  summary: string;
+  internalDate?: number;
 };
 
 let clientPromise: Promise<RedisClientType> | null = null;

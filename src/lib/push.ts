@@ -14,9 +14,9 @@ function ensure() {
   }
 }
 
-export async function sendPush(user: StoredUser, title: string, body: string) {
+export async function sendPush(user: StoredUser, title: string, body: string, url = "/") {
   ensure();
-  const payload = JSON.stringify({ title, body });
+  const payload = JSON.stringify({ title, body, url });
   const dead: string[] = [];
   await Promise.all(
     user.subscriptions.map(async (sub) => {

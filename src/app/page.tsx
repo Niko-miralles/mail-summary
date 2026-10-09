@@ -1,8 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type Me = { email: string; name?: string } | null;
+type StoredMail = {
+  id: string;
+  senderName: string;
+  from: string;
+  subject: string;
+  summary: string;
+};
+type FullMail = {
+  id: string;
+  from: string;
+  to: string;
+  subject: string;
+  date: string;
+  body: string;
+  summary: string | null;
+};
 
 function base64ToUint8(base64: string) {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -11,7 +28,10 @@ function base64ToUint8(base64: string) {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
-export default function Home() {
+function Home() {
+  const params = useSearchParams();
+  const mailId = params.get("mail");
+
   const [me, setMe] = useState<Me>(null);
   const [loaded, setLoaded] = useState(false);
   const [pushState, setPushState] = useState<"off" | "on" | "unsupported" | "denied">(() =>
@@ -19,13 +39,22 @@ export default function Home() {
       ? "unsupported"
       : "off",
   );
+  const [mails, setMails] = useState<StoredMail[]>([]);
   const [summaries, setSummaries] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [openMail, setOpenMail] = useState<FullMail | null>(null);
+  const [loadingMail, setLoadingMail] = useState(false);
 
   useEffect(() => {
     fetch("/api/me").then(async (r) => {
-      setMe(r.ok ? await r.json() : null);
+      const m = r.ok ? await r.json() : null;
+      setMe(m);
       setLoaded(true);
+      if (m) {
+        fetch("/api/mail").then(async (r2) => {
+          if (r2.ok) setMails((await r2.json()).mails ?? []);
+        });
+      }
     });
     if ("serviceWorker" in navigator && "PushManager" in window) {
       navigator.serviceWorker.register("/sw.js").then(async (reg) => {
@@ -34,6 +63,22 @@ export default function Home() {
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (mailId) openMailById(mailId);
+  }, [mailId]);
+
+  async function openMailById(id: string) {
+    setLoadingMail(true);
+    const r = await fetch(`/api/mail?id=${encodeURIComponent(id)}`);
+    if (r.ok) setOpenMail(await r.json());
+    setLoadingMail(false);
+  }
+
+  function closeMail() {
+    setOpenMail(null);
+    if (mailId) window.history.replaceState(null, "", "/");
+  }
 
   async function enablePush() {
     const reg = await navigator.serviceWorker.ready;
@@ -63,13 +108,44 @@ export default function Home() {
     const r = await fetch("/api/summarize", { method: "POST" });
     const data = await r.json();
     setSummaries(data.summaries ?? []);
+    const r2 = await fetch("/api/mail");
+    if (r2.ok) setMails((await r2.json()).mails ?? []);
     setBusy(false);
   }
 
   if (!loaded) return <main className="flex flex-1 items-center justify-center text-sm text-zinc-400">Cargando…</main>;
 
+  if (openMail || loadingMail) {
+    return (
+      <main className="flex flex-1 flex-col px-6 pt-14 pb-10 mx-auto w-full max-w-md">
+        <button onClick={closeMail} className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-600 mb-6">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Volver
+        </button>
+        {loadingMail ? (
+          <p className="text-sm text-zinc-400">Cargando email…</p>
+        ) : openMail ? (
+          <div className="flex flex-col gap-4">
+            {openMail.summary && (
+              <div className="rounded-2xl bg-zinc-900 text-white px-4 py-3 text-sm">{openMail.summary}</div>
+            )}
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">{openMail.subject}</h2>
+              <p className="text-xs text-zinc-400 mt-1">
+                {openMail.from} · {openMail.date}
+              </p>
+            </div>
+            <p className="text-sm text-zinc-700 whitespace-pre-wrap leading-relaxed">{openMail.body}</p>
+          </div>
+        ) : null}
+      </main>
+    );
+  }
+
   return (
-    <main className="flex flex-1 flex-col items-center px-6 pt-20 pb-10 mx-auto w-full max-w-md">
+    <main className="flex flex-1 flex-col items-center px-6 pt-16 pb-10 mx-auto w-full max-w-md">
       <div className="w-14 h-14 rounded-2xl bg-zinc-900 flex items-center justify-center mb-6">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -77,7 +153,7 @@ export default function Home() {
         </svg>
       </div>
       <h1 className="text-2xl font-semibold tracking-tight mb-1">Mail Summary</h1>
-      <p className="text-sm text-zinc-500 text-center mb-10">
+      <p className="text-sm text-zinc-500 text-center mb-8">
         Resúmenes con IA de tus emails, directos a tus notificaciones.
       </p>
 
@@ -127,6 +203,25 @@ export default function Home() {
               ))}
             </ul>
           )}
+
+          {mails.length > 0 && (
+            <div className="w-full mt-4">
+              <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">Recientes</p>
+              <ul className="flex flex-col gap-2">
+                {mails.map((m) => (
+                  <li key={m.id}>
+                    <button
+                      onClick={() => openMailById(m.id)}
+                      className="w-full text-left rounded-2xl border border-zinc-200 px-4 py-3 hover:bg-zinc-50 transition"
+                    >
+                      <p className="text-sm font-medium">{m.senderName}</p>
+                      <p className="text-sm text-zinc-600 mt-0.5">{m.summary}</p>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
@@ -134,5 +229,13 @@ export default function Home() {
         Instálala en tu móvil: Compartir → Añadir a pantalla de inicio.
       </p>
     </main>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense>
+      <Home />
+    </Suspense>
   );
 }

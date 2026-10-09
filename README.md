@@ -1,36 +1,23 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mail Summary
 
-## Getting Started
+Web app (PWA) que resume tus emails de Gmail con IA y te los manda como notificaciones push, en vez de las notificaciones normales de Gmail.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Next.js (App Router) + TypeScript + Tailwind
+- Google OAuth (scope `gmail.readonly`) — flow manual en `src/app/api/auth/*`
+- Gmail API (`googleapis`) para los no leídos del inbox
+- Claude (`@anthropic-ai/sdk`) para los resúmenes de una frase
+- Web Push (`web-push` + `public/sw.js`) para las notificaciones
+- Vercel KV como storage (tokens OAuth, suscripciones push, último mensaje visto)
+- Vercel Cron cada 5 min → `GET /api/cron`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Env vars
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Ver `.env.example`. `NEXT_PUBLIC_VAPID_PUBLIC_KEY` debe ser la clave pública VAPID.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Flujo
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Login con Google → guarda refresh token en KV, cookie firmada como sesión
+2. El usuario activa notificaciones (Push API) → suscripción guardada en KV
+3. El cron (o el botón "Resumir no leídos ahora") mira `is:unread` sin newsletters, resume cada email nuevo con Claude y manda push

@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-type Me = { email: string; name?: string } | null;
+type Me = { email: string; name?: string; lang?: "es" | "en" } | null;
 type StoredMail = {
   id: string;
   senderName: string;
@@ -182,7 +182,27 @@ function Home() {
               <p className="text-sm font-medium truncate">{me.name || me.email}</p>
               <p className="text-xs text-zinc-400 truncate">{me.email}</p>
             </div>
-            <a href="/api/auth/logout" className="text-xs text-zinc-400 hover:text-zinc-600 shrink-0">Salir</a>
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="flex rounded-full border border-zinc-200 overflow-hidden">
+                {(["es", "en"] as const).map((l) => (
+                  <button
+                    key={l}
+                    onClick={async () => {
+                      setMe({ ...me, lang: l });
+                      await fetch("/api/me", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ lang: l }),
+                      });
+                    }}
+                    className={`px-2.5 py-1 text-xs font-medium uppercase transition ${(me.lang ?? "es") === l ? "bg-zinc-900 text-white" : "text-zinc-400"}`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <a href="/api/auth/logout" className="text-xs text-zinc-400 hover:text-zinc-600">Salir</a>
+            </div>
           </div>
 
           <button

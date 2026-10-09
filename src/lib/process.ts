@@ -9,7 +9,7 @@ export async function processUserMail(user: StoredUser): Promise<string[]> {
   // mails are newest-first from Gmail
   const summaries: string[] = [];
   for (const m of [...mails].reverse()) {
-    const s = await summarizeMail(m);
+    const s = await summarizeMail(m, user.lang);
     if (s === "SKIP" || !s) continue;
     summaries.push(s);
     user.recentMails = [

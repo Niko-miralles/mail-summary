@@ -11,6 +11,7 @@ export type StoredUser = {
   subscriptions: PushSubscriptionJSON[];
   recentMails?: StoredMail[];
   lastCalendarDigest?: string;
+  lang?: "es" | "en";
   createdAt: number;
 };
 

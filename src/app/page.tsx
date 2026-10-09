@@ -11,6 +11,7 @@ type StoredMail = {
   subject: string;
   summary: string;
 };
+type CalEv = { id: string; title: string; time: string; location?: string };
 type FullMail = {
   id: string;
   from: string;
@@ -40,6 +41,7 @@ function Home() {
       : "off",
   );
   const [mails, setMails] = useState<StoredMail[]>([]);
+  const [events, setEvents] = useState<CalEv[]>([]);
   const [summaries, setSummaries] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [openMail, setOpenMail] = useState<FullMail | null>(null);
@@ -53,6 +55,9 @@ function Home() {
       if (m) {
         fetch("/api/mail").then(async (r2) => {
           if (r2.ok) setMails((await r2.json()).mails ?? []);
+        });
+        fetch("/api/calendar").then(async (r3) => {
+          if (r3.ok) setEvents((await r3.json()).events ?? []);
         });
       }
     });
@@ -202,6 +207,20 @@ function Home() {
                 <li key={i} className="rounded-2xl bg-zinc-50 px-4 py-3 text-sm">{s}</li>
               ))}
             </ul>
+          )}
+
+          {events.length > 0 && (
+            <div className="w-full mt-4">
+              <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-2">Hoy</p>
+              <ul className="flex flex-col gap-2">
+                {events.map((e) => (
+                  <li key={e.id} className="rounded-2xl border border-zinc-200 px-4 py-3 flex items-baseline gap-3">
+                    <span className="text-sm font-medium text-zinc-400 shrink-0 w-16">{e.time}</span>
+                    <span className="text-sm">{e.title}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {mails.length > 0 && (

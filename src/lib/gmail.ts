@@ -15,6 +15,7 @@ export const SCOPES = [
   "email",
   "profile",
   "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/calendar.readonly",
 ];
 
 export type NewMail = {
@@ -35,7 +36,7 @@ function senderName(from: string): string {
   return (m ? m[1] : from).trim() || from;
 }
 
-export async function gmailClient(user: StoredUser) {
+export async function googleAuth(user: StoredUser) {
   const auth = oauthClient();
   auth.setCredentials({
     refresh_token: user.refreshToken,
@@ -49,7 +50,11 @@ export async function gmailClient(user: StoredUser) {
       await saveUser(user);
     }
   });
-  return google.gmail({ version: "v1", auth });
+  return auth;
+}
+
+export async function gmailClient(user: StoredUser) {
+  return google.gmail({ version: "v1", auth: await googleAuth(user) });
 }
 
 export type FullMail = {

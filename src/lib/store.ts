@@ -10,6 +10,7 @@ export type StoredUser = {
   lastCheckedMessageId?: string;
   subscriptions: PushSubscriptionJSON[];
   recentMails?: StoredMail[];
+  lastCalendarDigest?: string;
   createdAt: number;
 };
 

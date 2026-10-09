@@ -1,5 +1,6 @@
 import { listUserIds, getUser } from "@/lib/store";
 import { processUserMail } from "@/lib/process";
+import { maybeSendCalendarDigest } from "@/lib/digest";
 import { NextRequest } from "next/server";
 
 export const maxDuration = 60;
@@ -15,7 +16,8 @@ export async function GET(request: NextRequest) {
     try {
       const user = await getUser(id);
       if (!user) continue;
-      results[id] = (await processUserMail(user)).length;
+      const digest = await maybeSendCalendarDigest(user).catch(() => false);
+      results[id] = `${(await processUserMail(user)).length} mails${digest ? ", digest" : ""}`;
     } catch (e) {
       results[id] = `error: ${(e as Error).message}`;
     }

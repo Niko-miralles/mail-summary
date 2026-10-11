@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "repository": "Niko-miralles/mail-summary",
+  "root": "",
+  "framework": "Next.js · App Router",
+  "entry": "src/app/layout.tsx",
+  "publicDir": "public",
+  "siteUrl": "https://project18.eu/",
+  "editorOrigin": "https://formacms.app",
+  "contentPath": "public/forma/content.json"
+}

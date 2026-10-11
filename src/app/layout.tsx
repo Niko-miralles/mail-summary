@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import FormaConnectorScript from "next/script";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,7 +23,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es" className={`${geistSans.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-white text-zinc-900">{children}</body>
+      <body className="min-h-full flex flex-col bg-white text-zinc-900">{children}
+<FormaConnectorScript id="forma-connector" data-forma-connector="1" src="/forma/visual-cms.js" strategy="afterInteractive" data-editor="https://formacms.app" data-content="/forma/content.json" />
+</body>
     </html>
   );
 }
